@@ -105,7 +105,7 @@ const createOnlineOrder = catchAsyncError(async(req,res,next) => {
         return res.status(400).send(`Webhook Error: ${error.message}`);
     }
     if(event.type === 'checkout.session.completed'){
-        const checkoutSession = event.data.object;
+        createOrder(event.data.object)
         console.log("Create order here....")
     }else{
 
@@ -113,4 +113,39 @@ const createOnlineOrder = catchAsyncError(async(req,res,next) => {
     }
 })
 
+
+async function createOrder(e) {
+
+    const cart = await cartModel.findById(e.client_reference_id)
+    if(!cart)  return next(new AppError("Cart not found", 404))
+
+        let user = await userModel.findOne({email: e.customer_email})
+    const order = new orderModel({
+        user: user._id,
+        cartItems: cart.cartItems,
+        totalOrderPrice: e.amount_total / 100,
+        shoppingAddress:e.metadata.shoppingAddress,
+        paymentMethod: 'card',
+        isPaid : true,
+        paidAt : Date.now()
+    })
+    await order.save()
+
+   if(order) {
+    let options = cart.cartItems.map(  item => ({
+        updateOne : {
+            filter: {_id : item.product },
+            update: { $inc : { quantity: -item.quantity , soldCount : item.quantity}}
+        }
+    }))
+    
+    await productModel.bulkWrite(options)
+
+    await cartModel.findOneAndDelete({user: user._id})
+
+    return res.status(200).json({message: "Order created successfully",order})
+   }else{
+    return next(new AppError("Order not created", 404))
+   }
+}
 export {addCashOrder,getAllOrders,getSpecificOrder,addCheckOutSession,createOnlineOrder}
