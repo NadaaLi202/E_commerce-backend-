@@ -1,3 +1,4 @@
+import { response } from "express";
 import { cartModel } from "../../../dataBase/models/cart.model.js";
 import { orderModel } from "../../../dataBase/models/order.model.js";
 import { productModel } from "../../../dataBase/models/product.model.js";
@@ -92,4 +93,24 @@ let session = await stripe.checkout.sessions.create({
     res.status(200).json({message : "Session created successfully",session})
 })
 
-export {addCashOrder,getAllOrders,getSpecificOrder,addCheckOutSession}
+
+const createOnlineOrder = catchAsyncError(async(req,res,next) => {
+
+    const sig = req.headers['stripe-signature'].toString()
+    let event ;
+
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, 'whsec_1eYHHpDj3QWN98rjWWGsS15BksJLOQ26');
+    } catch (error) {
+        return res.status(400).send(`Webhook Error: ${error.message}`);
+    }
+    if(event.type === 'checkout.session.completed'){
+        const checkoutSession = event.data.object;
+        console.log("Create order here....")
+    }else{
+
+        console.log(`Unhandled event type ${event.type}`);
+    }
+})
+
+export {addCashOrder,getAllOrders,getSpecificOrder,addCheckOutSession,createOnlineOrder}

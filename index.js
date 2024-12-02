@@ -4,6 +4,7 @@ import morgan from 'morgan'
 import { routes } from './Src/modules/index.routes.js'
 import cors from 'cors'
 import * as dotenv from 'dotenv'
+import { createOnlineOrder } from './Src/modules/Order/order.controller.js'
 dotenv.config()
 
 const app = express()
@@ -12,6 +13,7 @@ const port = 3001
 
 //middleware
 app.use(cors())
+app.post('/webhook', express.raw({type: 'application/json'}),createOnlineOrder)
 app.use(express.json())
 app.use(morgan('dev'))
 app.use(express.static('uploads'))
@@ -27,3 +29,4 @@ app.listen(process.env.PORT || port, () => console.log(`Example app listening on
 process.on('unhandledRejection',(err) => {
     console.log('unhandledRejection',err)
 })
+
